@@ -1,0 +1,6 @@
+@ReservationService_HostAddress = http://localhost:5003
+
+GET {{ReservationService_HostAddress}}/swagger/v1/swagger.json
+Accept: application/json
+
+###
