@@ -43,14 +43,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddDbContext<ReservationServiceContext>(options =>
+if (builder.Environment.IsDevelopment())
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (connectionString == "InMemory")
-        options.UseInMemoryDatabase("ReservationServiceDb");
-    else
-        options.UseNpgsql(connectionString);
-});
+    builder.Services.AddDbContext<ReservationServiceContext>(options =>
+        options.UseInMemoryDatabase("ReservationServiceDb"));
+}
+else
+{
+    var connectionString = builder.Configuration.GetConnectionString("ReservationDb");
+    builder.Services.AddDbContext<ReservationServiceContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 builder.Services.Configure<ServiceUrlsOptions>(builder.Configuration.GetSection("ServiceUrls"));
 var serviceUrls = builder.Configuration.GetSection("ServiceUrls").Get<ServiceUrlsOptions>()
@@ -122,11 +125,18 @@ builder.Services.AddHostedService<WaitlistExpiryBackgroundService>();
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment())
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<ReservationServiceContext>().Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

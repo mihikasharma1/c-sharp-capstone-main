@@ -11,18 +11,27 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Catalog Service API", Version = "v1" });
 });
 
-builder.Services.AddDbContext<CatalogServiceContext>(options =>
+if (builder.Environment.IsDevelopment())
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (connectionString == "InMemory")
-        options.UseInMemoryDatabase("CatalogServiceDb");
-    else
-        options.UseNpgsql(connectionString);
-});
+    builder.Services.AddDbContext<CatalogServiceContext>(options =>
+        options.UseInMemoryDatabase("CatalogServiceDb"));
+}
+else
+{
+    var connectionString = builder.Configuration.GetConnectionString("CatalogDb");
+    builder.Services.AddDbContext<CatalogServiceContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<CatalogServiceContext>().Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {

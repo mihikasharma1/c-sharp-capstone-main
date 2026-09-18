@@ -40,14 +40,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddDbContext<UserServiceContext>(options =>
+if (builder.Environment.IsDevelopment())
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (connectionString == "InMemory")
-        options.UseInMemoryDatabase("UserServiceDb");
-    else
-        options.UseNpgsql(connectionString);
-});
+    builder.Services.AddDbContext<UserServiceContext>(options =>
+        options.UseInMemoryDatabase("UserServiceDb"));
+}
+else
+{
+    var connectionString = builder.Configuration.GetConnectionString("UserDb");
+    builder.Services.AddDbContext<UserServiceContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
@@ -82,6 +85,11 @@ builder.Services.AddHttpClient<IReservationServiceClient, ReservationServiceClie
 });
 
 var app = builder.Build();
+if (!app.Environment.IsDevelopment())
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<UserServiceContext>().Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {
