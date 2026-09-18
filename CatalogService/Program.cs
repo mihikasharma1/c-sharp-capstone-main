@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using CatalogService.Data;
+using CatalogService.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,12 +20,18 @@ builder.Services.AddDbContext<CatalogServiceContext>(options =>
         options.UseNpgsql(connectionString);
 });
 
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<CatalogServiceContext>();
+    await DataSeeder.SeedAsync(context);
 }
 
 app.MapControllers();
