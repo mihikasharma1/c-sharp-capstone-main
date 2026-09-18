@@ -9,6 +9,7 @@ public interface IBookRepository
 {
     Task<(List<BookSummaryDto> Items, int TotalCount)> SearchAsync(BookQueryParameters parameters);
     Task<BookDetailDto?> GetByIdAsync(Guid bookId);
+    Task<BookDetailDto?> UpdateAvailabilityAsync(Guid bookId, int delta);
 }
 
 public class BookRepository : IBookRepository
@@ -95,6 +96,31 @@ public class BookRepository : IBookRepository
                 UpdatedAt = b.UpdatedAt
             })
             .FirstOrDefaultAsync();
+    
+    
+    public async Task<BookDetailDto?> UpdateAvailabilityAsync(Guid bookId, int delta)
+    {
+        var book = await _context.Books.FirstOrDefaultAsync(b => b.BookId == bookId);
+        if (book is null) return null;
+
+        var newAvailable = book.AvailableCopies + delta;
+        if (newAvailable < 0 || newAvailable > book.TotalCopies)
+            throw new InvalidOperationException(
+                $"Cannot adjust availability by {delta}: would result in {newAvailable}, valid range is 0-{book.TotalCopies}");
+
+        book.AvailableCopies = newAvailable;
+        await _context.SaveChangesAsync();
+
+        return new BookDetailDto
+        {
+            BookId = book.BookId, Isbn = book.Isbn, Title = book.Title, Author = book.Author,
+            Genre = book.Genre, PublicationYear = book.PublicationYear, Description = book.Description,
+            Publisher = book.Publisher, PageCount = book.PageCount, Language = book.Language,
+            TotalCopies = book.TotalCopies, AvailableCopies = book.AvailableCopies,
+            Status = book.AvailableCopies > 0 ? "AVAILABLE" : "CHECKED_OUT",
+            CreatedAt = book.CreatedAt, UpdatedAt = book.UpdatedAt
+        };
+    }
 
     private static IQueryable<Book> ApplySorting(IQueryable<Book> query, string sortBy, string sortOrder)
     {

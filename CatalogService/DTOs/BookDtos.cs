@@ -32,3 +32,8 @@ public class BookDetailDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+public class UpdateAvailabilityRequestDto
+{
+    public int Delta { get; set; }
+}

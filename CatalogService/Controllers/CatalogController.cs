@@ -49,4 +49,21 @@ public class CatalogController : ControllerBase
 
         return Ok(book);
     }
+    
+    [HttpPut("books/{bookId:guid}/availability")]
+    public async Task<IActionResult> UpdateAvailability(Guid bookId, UpdateAvailabilityRequestDto request)
+    {
+        try
+        {
+            var updated = await _bookRepository.UpdateAvailabilityAsync(bookId, request.Delta);
+            if (updated is null)
+                return NotFound(new ErrorResponseDto { Error = "NOT_FOUND", Message = $"Book not found with ID: {bookId}" });
+
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ErrorResponseDto { Error = "VALIDATION_ERROR", Message = ex.Message });
+        }
+    }
 }
