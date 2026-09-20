@@ -26,17 +26,36 @@ else
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 
 var app = builder.Build();
-
+app.Use((context, next) =>
+{
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(prefix))
+    {
+        context.Request.PathBase = prefix;
+    }
+    return next();
+});
 if (!app.Environment.IsDevelopment())
 {
     using var migrationScope = app.Services.CreateScope();
     migrationScope.ServiceProvider.GetRequiredService<CatalogServiceContext>().Database.Migrate();
 }
 
+app.MapGet("/health", async (CatalogServiceContext context) =>
+{
+    var canConnect = await context.Database.CanConnectAsync();
+    var migrationsCount = context.Database.IsRelational()
+        ? (await context.Database.GetAppliedMigrationsAsync()).Count()
+        : 0;
+    return Results.Ok(new { status = canConnect ? "UP" : "DOWN", service = "CatalogService", database = "catalogservicedb", migrations = migrationsCount });
+});
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+
 
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<CatalogServiceContext>();

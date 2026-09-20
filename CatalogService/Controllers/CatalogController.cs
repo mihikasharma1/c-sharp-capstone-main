@@ -33,6 +33,13 @@ public class CatalogController : ControllerBase
             Last = parameters.Page >= totalPages - 1
         });
     }
+    
+    [HttpPost("books")]
+    public async Task<IActionResult> CreateBook(CreateBookRequestDto request)
+    {
+        var book = await _bookRepository.CreateAsync(request);
+        return CreatedAtAction(nameof(GetBookById), new { bookId = book.BookId }, book);
+    }
 
     [HttpGet("books/{bookId:guid}")]
     public async Task<IActionResult> GetBookById(Guid bookId)

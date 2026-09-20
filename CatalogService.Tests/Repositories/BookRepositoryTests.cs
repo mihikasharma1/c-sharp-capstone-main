@@ -3,6 +3,7 @@ using CatalogService.Models;
 using CatalogService.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using CatalogService.DTOs;
 
 namespace CatalogService.Tests.Repositories;
 
@@ -121,5 +122,44 @@ public class BookRepositoryTests
         await SeedAsync(context);
         var book = await context.Books.FirstAsync(b => b.Isbn == "222");
         await Assert.ThrowsAsync<InvalidOperationException>(() => new BookRepository(context).UpdateAvailabilityAsync(book.BookId, -1));
+    }
+    
+    [Fact]
+    public async Task CreateAsync_CreatesBookWithAvailableCopiesEqualToTotalCopies()
+    {
+        var context = CreateContext();
+        var repo = new BookRepository(context);
+
+        var result = await repo.CreateAsync(new CreateBookRequestDto
+        {
+            Isbn = "978-1-111-11111-1",
+            Title = "Test Book",
+            Author = "Test Author",
+            Genre = "Fiction",
+            TotalCopies = 3
+        });
+
+        Assert.Equal(3, result.TotalCopies);
+        Assert.Equal(3, result.AvailableCopies);
+        Assert.Equal("AVAILABLE", result.Status);
+        Assert.Equal(1, await context.Books.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateAsync_SetsCheckedOutStatus_WhenTotalCopiesIsZero()
+    {
+        var context = CreateContext();
+        var repo = new BookRepository(context);
+
+        var result = await repo.CreateAsync(new CreateBookRequestDto
+        {
+            Isbn = "978-2-222-22222-2",
+            Title = "No Copies",
+            Author = "Author",
+            Genre = "Fiction",
+            TotalCopies = 0
+        });
+
+        Assert.Equal("CHECKED_OUT", result.Status);
     }
 }

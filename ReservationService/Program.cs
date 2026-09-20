@@ -125,17 +125,31 @@ builder.Services.AddHostedService<WaitlistExpiryBackgroundService>();
 
 var app = builder.Build();
 
+app.Use((context, next) =>
+{
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(prefix))
+    {
+        context.Request.PathBase = prefix;
+    }
+    return next();
+});
+
 if (!app.Environment.IsDevelopment())
 {
     using var migrationScope = app.Services.CreateScope();
     migrationScope.ServiceProvider.GetRequiredService<ReservationServiceContext>().Database.Migrate();
 }
-
-if (app.Environment.IsDevelopment())
+app.MapGet("/health", async (ReservationServiceContext context) =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    var canConnect = await context.Database.CanConnectAsync();
+    var migrationsCount = context.Database.IsRelational()
+        ? (await context.Database.GetAppliedMigrationsAsync()).Count()
+        : 0;
+    return Results.Ok(new { status = canConnect ? "UP" : "DOWN", service = "ReservationService", database = "reservationservicedb", migrations = migrationsCount });
+});
+app.UseSwagger();
+app.UseSwaggerUI();
 
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

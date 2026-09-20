@@ -10,6 +10,8 @@ public interface IBookRepository
     Task<(List<BookSummaryDto> Items, int TotalCount)> SearchAsync(BookQueryParameters parameters);
     Task<BookDetailDto?> GetByIdAsync(Guid bookId);
     Task<BookDetailDto?> UpdateAvailabilityAsync(Guid bookId, int delta);
+    
+    Task<BookDetailDto> CreateAsync(CreateBookRequestDto request);
 }
 
 public class BookRepository : IBookRepository
@@ -117,6 +119,30 @@ public class BookRepository : IBookRepository
             Genre = book.Genre, PublicationYear = book.PublicationYear, Description = book.Description,
             Publisher = book.Publisher, PageCount = book.PageCount, Language = book.Language,
             TotalCopies = book.TotalCopies, AvailableCopies = book.AvailableCopies,
+            Status = book.AvailableCopies > 0 ? "AVAILABLE" : "CHECKED_OUT",
+            CreatedAt = book.CreatedAt, UpdatedAt = book.UpdatedAt
+        };
+    }
+    
+    public async Task<BookDetailDto> CreateAsync(CreateBookRequestDto request)
+    {
+        var book = new Book
+        {
+            Isbn = request.Isbn, Title = request.Title, Author = request.Author, Genre = request.Genre,
+            PublicationYear = request.PublicationYear, Description = request.Description,
+            Publisher = request.Publisher, PageCount = request.PageCount, Language = request.Language,
+            TotalCopies = request.TotalCopies, AvailableCopies = request.TotalCopies
+        };
+
+        await _context.Books.AddAsync(book);
+        await _context.SaveChangesAsync();
+
+        return new BookDetailDto
+        {
+            BookId = book.BookId, Isbn = book.Isbn, Title = book.Title, Author = book.Author, Genre = book.Genre,
+            PublicationYear = book.PublicationYear, Description = book.Description, Publisher = book.Publisher,
+            PageCount = book.PageCount, Language = book.Language, TotalCopies = book.TotalCopies,
+            AvailableCopies = book.AvailableCopies,
             Status = book.AvailableCopies > 0 ? "AVAILABLE" : "CHECKED_OUT",
             CreatedAt = book.CreatedAt, UpdatedAt = book.UpdatedAt
         };

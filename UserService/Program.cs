@@ -90,6 +90,17 @@ if (!app.Environment.IsDevelopment())
     using var migrationScope = app.Services.CreateScope();
     migrationScope.ServiceProvider.GetRequiredService<UserServiceContext>().Database.Migrate();
 }
+app.MapGet("/health", async (UserServiceContext context) =>
+{
+    var canConnect = await context.Database.CanConnectAsync();
+    var migrationsCount = context.Database.IsRelational()
+        ? (await context.Database.GetAppliedMigrationsAsync()).Count()
+        : 0;
+    return Results.Ok(new { status = canConnect ? "UP" : "DOWN", service = "UserService", database = "userservicedb", migrations = migrationsCount });
+});
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 if (app.Environment.IsDevelopment())
 {
@@ -98,8 +109,6 @@ if (app.Environment.IsDevelopment())
     var context = scope.ServiceProvider.GetRequiredService<UserServiceContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     await DataSeeder.SeedAsync(context, hasher);
-    app.UseSwagger();
-    app.UseSwaggerUI();
 }
 
 app.UseAuthentication();

@@ -44,4 +44,20 @@ public class CatalogControllerTests
         _bookRepository.Setup(r => r.GetByIdAsync(book.BookId)).ReturnsAsync(book);
         Assert.Same(book, Assert.IsType<OkObjectResult>(await _controller.GetBookById(book.BookId)).Value);
     }
+    
+    [Fact]
+    public async Task CreateBook_ReturnsCreatedResult()
+    {
+        var created = new BookDetailDto { BookId = Guid.NewGuid(), Title = "Test Book" };
+        _bookRepository.Setup(r => r.CreateAsync(It.IsAny<CreateBookRequestDto>())).ReturnsAsync(created);
+
+        var result = await _controller.CreateBook(new CreateBookRequestDto
+        {
+            Isbn = "978-1-111-11111-1", Title = "Test Book", Author = "Author", Genre = "Fiction", TotalCopies = 3
+        });
+
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+        Assert.Equal(nameof(CatalogController.GetBookById), createdResult.ActionName);
+        Assert.Same(created, createdResult.Value);
+    }
 }
